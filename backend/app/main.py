@@ -7,8 +7,13 @@ import os
 from .database import get_session_local
 from . import models
 
+from .routers import project, task, activity_log
+
 app = FastAPI()
 
+app.include_router(project.router)
+app.include_router(task.router)
+app.include_router(activity_log.router)
 
 # Dependency
 def get_db():
