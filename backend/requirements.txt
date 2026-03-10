@@ -3,3 +3,6 @@ uvicorn[standard]
 psycopg2-binary
 sqlalchemy
 alembic
+python-jose[cryptography]
+passlib[argon2]
+python-multipart

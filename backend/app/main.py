@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from fastapi.responses import JSONResponse
+from app.routers import auth
 import psycopg2
 import os
 
@@ -11,6 +12,7 @@ from .routers import project, task, activity_log
 
 app = FastAPI()
 
+app.include_router(auth.router)
 app.include_router(project.router)
 app.include_router(task.router)
 app.include_router(activity_log.router)

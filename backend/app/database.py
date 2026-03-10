@@ -17,3 +17,15 @@ def get_session_local():
         autoflush=False,
         bind=engine
     )
+
+
+from sqlalchemy.orm import Session
+from .database import get_session_local  # if needed adjust import
+
+def get_db():
+    SessionLocal = get_session_local()
+    db: Session = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
