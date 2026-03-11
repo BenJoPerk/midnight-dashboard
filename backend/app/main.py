@@ -1,48 +1,102 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Request, Depends
 from sqlalchemy.orm import Session
-from fastapi.responses import JSONResponse
-from app.routers import auth
-import psycopg2
-import os
+from sqlalchemy import text
+from datetime import datetime, timezone
+import time
 
-from .database import get_session_local
-from . import models
+from app.core.logging import get_logger
+from app.core.errors import (
+    APIException,
+    api_exception_handler,
+    unhandled_exception_handler,
+)
+from app.schemas.base import SuccessResponse, success_response
+from app.database import get_db
+from app import models
 
-from .routers import project, task, activity_log
+from app.routers import auth, project, task, activity_log
 
-app = FastAPI()
 
-app.include_router(auth.router)
-app.include_router(project.router)
-app.include_router(task.router)
-app.include_router(activity_log.router)
+# -----------------------------------------
+# App Initialization
+# -----------------------------------------
 
-# Dependency
-def get_db():
-    SessionLocal = get_session_local()
-    db = SessionLocal()
+app = FastAPI(
+    title="Midnight Personal OS API",
+    version="1.0.0",
+    docs_url="/docs",
+)
+
+logger = get_logger("request")
+
+
+# -----------------------------------------
+# Middleware
+# -----------------------------------------
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+
+    response = await call_next(request)
+
+    duration = round((time.time() - start_time) * 1000, 2)
+
+    logger.info(
+        "%s %s | status=%s | duration=%sms",
+        request.method,
+        request.url.path,
+        response.status_code,
+        duration,
+    )
+
+    return response
+
+
+# -----------------------------------------
+# Exception Handlers
+# -----------------------------------------
+
+app.add_exception_handler(APIException, api_exception_handler)
+app.add_exception_handler(Exception, unhandled_exception_handler)
+
+
+# -----------------------------------------
+# Routers
+# -----------------------------------------
+
+app.include_router(auth.router, prefix="/api/v1")
+app.include_router(project.router, prefix="/api/v1")
+app.include_router(task.router, prefix="/api/v1")
+app.include_router(activity_log.router, prefix="/api/v1")
+
+
+# -----------------------------------------
+# Health Endpoint
+# -----------------------------------------
+
+@app.get("/api/v1/health", response_model=SuccessResponse[dict])
+def health_check(db: Session = Depends(get_db)):
     try:
-        yield db
-    finally:
-        db.close()
-
-
-@app.get("/health")
-def health_check():
-    try:
-        conn = psycopg2.connect(
-            host=os.getenv("POSTGRES_HOST"),
-            database=os.getenv("POSTGRES_DB"),
-            user=os.getenv("POSTGRES_USER"),
-            password=os.getenv("POSTGRES_PASSWORD"),
-            port=os.getenv("POSTGRES_PORT"),
+        db.execute(text("SELECT 1"))
+        return success_response({"status": "ok"})
+    except Exception:
+        logger.exception("Health check failed")
+        raise APIException(
+            code="INTERNAL_ERROR",
+            message="Database connectivity failed",
+            status_code=500,
         )
-        conn.close()
-        return JSONResponse(status_code=200, content={"status": "healthy"})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
 
 
-@app.get("/users/count")
+# -----------------------------------------
+# Example: User Count
+# -----------------------------------------
+
+@app.get("/api/v1/users/count", response_model=SuccessResponse[dict])
 def user_count(db: Session = Depends(get_db)):
-    return {"count": db.query(models.User).count()}
+    count = db.query(models.User).count()
+
+    return success_response(
+        {"count": count}
+    )

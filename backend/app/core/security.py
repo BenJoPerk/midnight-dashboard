@@ -7,13 +7,16 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import User
 from fastapi import HTTPException
-import os
+from app.core.config import settings
+
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="/api/v1/auth/login"
+)
 
-SECRET_KEY = os.getenv("SECRET_KEY", "dev_secret_change_me")
+SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 

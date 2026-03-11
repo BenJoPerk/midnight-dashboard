@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
 
   db:
@@ -8,34 +10,31 @@ services:
       - .env
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U midnight -d midnightdb -h localhost"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   backend:
     build: ./backend
-    depends_on:
-      db:
-        condition: service_healthy
     container_name: midnight_backend
     restart: always
     env_file:
       - .env
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
   nginx:
     image: nginx:latest
     container_name: midnight_nginx
     restart: always
     ports:
-      - "8080:80"
+      - "80:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
@@ -45,8 +44,6 @@ services:
     image: grafana/grafana:latest
     container_name: midnight_grafana
     restart: always
-    ports:
-      - "3000:3000"
     volumes:
       - grafana_data:/var/lib/grafana
 
