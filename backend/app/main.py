@@ -65,17 +65,17 @@ app.add_exception_handler(Exception, unhandled_exception_handler)
 # Routers
 # -----------------------------------------
 
-app.include_router(auth.router, prefix="/api/v1")
-app.include_router(project.router, prefix="/api/v1")
-app.include_router(task.router, prefix="/api/v1")
-app.include_router(activity_log.router, prefix="/api/v1")
+app.include_router(auth.router, prefix="/v1")
+app.include_router(project.router, prefix="/v1")
+app.include_router(task.router, prefix="/v1")
+app.include_router(activity_log.router, prefix="/v1")
 
 
 # -----------------------------------------
 # Health Endpoint
 # -----------------------------------------
 
-@app.get("/api/v1/health", response_model=SuccessResponse[dict])
+@app.get("/v1/health", response_model=SuccessResponse[dict])
 def health_check(db: Session = Depends(get_db)):
     try:
         db.execute(text("SELECT 1"))
@@ -93,7 +93,7 @@ def health_check(db: Session = Depends(get_db)):
 # Example: User Count
 # -----------------------------------------
 
-@app.get("/api/v1/users/count", response_model=SuccessResponse[dict])
+@app.get("/v1/users/count", response_model=SuccessResponse[dict])
 def user_count(db: Session = Depends(get_db)):
     count = db.query(models.User).count()
 

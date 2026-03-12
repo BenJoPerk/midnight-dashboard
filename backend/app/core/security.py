@@ -2,19 +2,14 @@ from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import Depends
-from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import User
 from fastapi import HTTPException
 from app.core.config import settings
-
+from fastapi import Request, HTTPException
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
-
-oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="/api/v1/auth/login"
-)
 
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = "HS256"
@@ -37,12 +32,19 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-
 def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    request: Request,
     db: Session = Depends(get_db),
 ):
     from jose import JWTError
+
+    token = request.cookies.get("access_token")
+
+    if token is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+        )
 
     credentials_exception = HTTPException(
         status_code=401,

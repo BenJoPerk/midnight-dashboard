@@ -16,7 +16,7 @@ from app.core.security import (
 
 from app.schemas.base import SuccessResponse, success_response
 from app.core.errors import APIException
-
+from app.core.security import get_current_user
 
 router = APIRouter(
     prefix="/auth",
@@ -82,11 +82,11 @@ def register(
 # LOGIN (OAUTH2 FORM — REQUIRED FOR SWAGGER)
 # -----------------------------------------
 
-@router.post(
-    "/login",
-    response_model=TokenResponse,
-)
+from fastapi import Response
+
+@router.post("/login")
 def login(
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
@@ -107,7 +107,24 @@ def login(
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
 
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-    }
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=False,          # MUST be True in production (HTTPS)
+        samesite="lax",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+
+    return {"message": "Login successful"}
+
+
+@router.post("/logout")
+def logout(response: Response):
+    response.delete_cookie("access_token")
+    return {"message": "Logged out"}
+
+
+@router.get("/me")
+def get_me(current_user: User = Depends(get_current_user)):
+    return {"data": {"id": current_user.id, "email": current_user.email}}

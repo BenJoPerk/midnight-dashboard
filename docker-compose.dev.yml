@@ -30,6 +30,15 @@ services:
     volumes:
       - ./backend:/app
 
+  frontend:
+    build: ./frontend
+    container_name: midnight_frontend_dev
+    restart: always
+    depends_on:
+      - backend
+    expose:
+      - "3000"
+
   nginx:
     image: nginx:latest
     container_name: midnight_nginx
